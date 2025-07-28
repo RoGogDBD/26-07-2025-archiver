@@ -1,23 +1,36 @@
-package app
+package handler
 
 import (
+	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/app"
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/config"
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/models"
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/repository"
 	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
-	Storage *TaskStorage
-	FS      FSFetcher
+	Storage repository.TaskRepository
+	FS      app.FSFetcher
 	Addr    *config.NetAddress
+}
+
+func NewHandler(storage repository.TaskRepository, fs app.FSFetcher, addr *config.NetAddress) *Handler {
+	return &Handler{
+		Storage: storage,
+		FS:      fs,
+		Addr:    addr,
+	}
 }
 
 func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +57,7 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := createTask(req.Name)
+	task := repository.CreateTask(req.Name)
 	h.Storage.AddTask(task)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -212,4 +225,49 @@ func (h *Handler) HandleDownloadArchive(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.zip"`, taskID))
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, file)
+}
+
+func (h *Handler) CreateArchive(ctx context.Context, task *models.Task) (string, error) {
+	buf := new(bytes.Buffer)
+	zipWriter := zip.NewWriter(buf)
+
+	for i, fileURL := range task.URLs {
+		resource, err := h.FS.OpenURL(ctx, fileURL)
+		if err != nil {
+			task.Errors = append(task.Errors, fmt.Sprintf("failed to open URL %q: %v", fileURL, err))
+			continue
+		}
+
+		data, err := io.ReadAll(resource)
+		resource.Close()
+		if err != nil {
+			task.Errors = append(task.Errors, fmt.Sprintf("failed to read data from %q: %v", fileURL, err))
+			continue
+		}
+
+		fileName := fmt.Sprintf("file%d%s", i+1, filepath.Ext(fileURL))
+		f, err := zipWriter.Create(fileName)
+		if err != nil {
+			task.Errors = append(task.Errors, fmt.Sprintf("failed to create entry in zip for %q: %v", fileName, err))
+			continue
+		}
+
+		_, err = f.Write(data)
+		if err != nil {
+			task.Errors = append(task.Errors, fmt.Sprintf("failed to write data to zip for %q: %v", fileName, err))
+			continue
+		}
+	}
+
+	if err := zipWriter.Close(); err != nil {
+		return "", fmt.Errorf("failed to close zip writer: %w", err)
+	}
+
+	archivePath := fmt.Sprintf("/tmp/%s.zip", task.ID)
+	if err := os.WriteFile(archivePath, buf.Bytes(), 0644); err != nil {
+		return "", fmt.Errorf("failed to save archive: %w", err)
+	}
+
+	archiveURL := fmt.Sprintf("http://%s/archives/%s", h.Addr.String(), task.ID)
+	return archiveURL, nil
 }

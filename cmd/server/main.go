@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/RoGogDBD/25-07-2025-archiver/internal/app"
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/config"
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/handler"
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/repository"
 	"github.com/viant/afs"
 )
 
@@ -17,12 +17,14 @@ func main() {
 }
 
 func run() error {
-	storage := app.NewTaskStorage()
+	storage := repository.NewTaskStorage()
 	fs := afs.New()
 	addr := config.ParseFlags()
 
-	router := NewRouter(storage, fs, addr)
+	h := handler.NewHandler(storage, fs, addr)
 
-	fmt.Println("Server started at", addr.String())
+	router := NewRouter(h)
+
+	log.Printf("Server started at %s\n", addr.String())
 	return http.ListenAndServe(addr.String(), router)
 }

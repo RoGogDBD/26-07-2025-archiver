@@ -8,22 +8,30 @@ import (
 
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/app"
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/config"
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/handler"
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/models"
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/repository"
 	"github.com/viant/afs"
 )
 
 func TestNewRouter(t *testing.T) {
-	storage := app.NewTaskStorage()
+	storage := repository.NewTaskStorage()
 	fs := afs.New()
 	addr := &config.NetAddress{Host: "localhost", Port: 8080}
+
+	h := &handler.Handler{
+		Storage: storage,
+		FS:      fs.(app.FSFetcher),
+		Addr:    addr,
+	}
+
+	router := NewRouter(h)
 
 	storage.AddTask(&models.Task{
 		ID:      "taskWithNoArchive",
 		URLs:    []string{"http://example.com/file1.pdf"},
 		Archive: "",
 	})
-
-	router := NewRouter(storage, fs, addr)
 
 	tests := []struct {
 		name           string

@@ -1,14 +1,14 @@
 SERVER_DIR=cmd/server
-APP_DIR=internal/app
+INTERNAL_DIR=internal/...
 
 COVERAGE=coverage.out
 COVERAGE_HTML=coverage.html
 
-.PHONY: all test build cover clean
+.PHONY: all test build clean test-server test-internal
 
 all: test build
 
-test: test-server test-app
+test: test-server test-internal
 
 test-server:
 	@echo "--- Running tests in $(SERVER_DIR) ---"
@@ -17,9 +17,9 @@ test-server:
 	@xdg-open coverage.html
 	@echo "--- Completed ---"
 
-test-app:
-	@echo "--- Running tests in $(APP_DIR) ---"
-	@go test -v -coverprofile=$(COVERAGE) -covermode=atomic ./$(APP_DIR)
+test-internal:
+	@echo "--- Running tests in $(INTERNAL_DIR) ---"
+	@go test -v -coverprofile=$(COVERAGE) -covermode=atomic ./$(INTERNAL_DIR)
 	@go tool cover -html=$(COVERAGE) -o coverage.html
 	@xdg-open coverage.html
 	@echo "--- Completed ---"

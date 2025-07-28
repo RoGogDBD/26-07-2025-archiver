@@ -1,10 +1,19 @@
-package app
+package repository
 
 import (
 	"sync"
 
 	"github.com/RoGogDBD/25-07-2025-archiver/internal/models"
+	"github.com/google/uuid"
 )
+
+type TaskRepository interface {
+	AddTask(*models.Task)
+	GetTask(string) (*models.Task, bool)
+	UpdateTask(*models.Task)
+	DeleteTask(string)
+	CanCreateTask() bool
+}
 
 type TaskStorage struct {
 	mu    sync.RWMutex
@@ -46,4 +55,14 @@ func (s *TaskStorage) DeleteTask(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.tasks, id)
+}
+
+func CreateTask(name string) *models.Task {
+	return &models.Task{
+		ID:     uuid.New().String(),
+		Name:   name,
+		URLs:   []string{},
+		Status: "pending",
+		Errors: nil,
+	}
 }

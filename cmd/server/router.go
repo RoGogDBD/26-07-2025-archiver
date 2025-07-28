@@ -3,20 +3,13 @@ package main
 import (
 	"net/http"
 
-	"github.com/RoGogDBD/25-07-2025-archiver/internal/app"
-	"github.com/RoGogDBD/25-07-2025-archiver/internal/config"
-	"github.com/go-chi/chi/middleware"
+	"github.com/RoGogDBD/25-07-2025-archiver/internal/handler"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewRouter(storage *app.TaskStorage, fs app.FSFetcher, addr *config.NetAddress) http.Handler {
+func NewRouter(h *handler.Handler) http.Handler {
 	r := chi.NewRouter()
-
-	handler := &app.Handler{
-		Storage: storage,
-		FS:      fs,
-		Addr:    addr,
-	}
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -24,14 +17,14 @@ func NewRouter(storage *app.TaskStorage, fs app.FSFetcher, addr *config.NetAddre
 	r.Use(middleware.Recoverer)
 
 	r.Route("/task", func(r chi.Router) {
-		r.Post("/", handler.HandleCreate)
+		r.Post("/", h.HandleCreate)
 		r.Route("/{id}", func(r chi.Router) {
-			r.Post("/add", handler.HandleAdd)
-			r.Get("/status", handler.HandleStatus)
+			r.Post("/add", h.HandleAdd)
+			r.Get("/status", h.HandleStatus)
 		})
 	})
 
-	r.Get("/archives/{id}", handler.HandleDownloadArchive)
+	r.Get("/archives/{id}", h.HandleDownloadArchive)
 
 	return r
 }

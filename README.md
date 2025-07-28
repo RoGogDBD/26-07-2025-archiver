@@ -29,7 +29,7 @@
 - `make all` — Запускает тесты и собирает бинарник
 - `make test` — Запускает тесты для server и app
 - `make test-server` — Тесты только для папки server (`cmd/server`)
-- `make test-app` — Тесты только для папки app (`internal/app`)
+- `make test-internal` — Тесты только для папки internal (`internal`)
 - `make build` — Собирает исполняемый файл `bin/app`
 - `make clean` — Удаляет артефакты сборки и покрытия
 
